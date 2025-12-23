@@ -18,12 +18,12 @@ This library provides foundational abstract base classes (ABCs) and data models 
 ## Installation
 
 ```bash
-pip install asset-marketplace-client-core
+uv pip install asset-marketplace-client-core
 ```
 
 For development:
 ```bash
-pip install asset-marketplace-client-core[dev]
+uv pip install asset-marketplace-client-core[dev]
 ```
 
 ## Quick Start
@@ -356,26 +356,29 @@ For a deeper understanding of the system architecture and design patterns, see t
 ```bash
 git clone https://github.com/brentlopez/asset-marketplace-client-core
 cd asset-marketplace-client-core
-pip install -e ".[dev]"
+uv sync
 ```
 
 ### Type Checking
 
 ```bash
-mypy src/
+uv run mypy src/
 ```
 
-### Linting
+### Linting & Formatting
 
 ```bash
-black src/
-ruff check src/
+# Format code
+uv run ruff format src/
+
+# Lint code
+uv run ruff check src/
 ```
 
 ### Testing
 
 ```bash
-pytest
+uv run pytest
 ```
 
 ## Contributing

@@ -8,7 +8,8 @@ A platform client extends the core abstractions to provide concrete implementati
 
 ## Quick Start Checklist
 
-- [ ] Install core library: `pip install asset-marketplace-client-core`
+- [ ] Install core library: `uv pip install asset-marketplace-client-core`
+- [ ] Initialize project with uv: `uv init --lib`
 - [ ] Create package structure with `src/` layout
 - [ ] Implement `MarketplaceClient` ABC
 - [ ] Define platform-specific `AuthProvider` subclass
@@ -17,7 +18,7 @@ A platform client extends the core abstractions to provide concrete implementati
 - [ ] Add API response models
 - [ ] Write comprehensive tests
 - [ ] Create documentation
-- [ ] Set up packaging (pyproject.toml)
+- [ ] Set up packaging with hatchling in pyproject.toml
 
 ## Project Structure
 
@@ -485,12 +486,12 @@ class MyRateLimitError(MyMarketplaceError):
 
 ## Step 7: Package Configuration
 
-Create a modern `pyproject.toml`:
+Create a modern `pyproject.toml` using hatchling:
 
 ```toml
 [build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "my-marketplace-client"
@@ -512,15 +513,51 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "mypy>=1.0",
-    "black>=23.0",
+    "ruff>=0.1.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/username/my-marketplace-client"
 Repository = "https://github.com/username/my-marketplace-client"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/my_marketplace_client"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py37"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+```
+
+### Development Setup
+
+Once you have your `pyproject.toml` configured:
+
+```bash
+# Install dependencies and create virtual environment
+uv sync
+
+# Add dependencies
+uv add asset-marketplace-client-core requests
+
+# Add dev dependencies
+uv add --dev pytest pytest-cov mypy ruff
+
+# Run tests
+uv run pytest
+
+# Type checking
+uv run mypy src/
+
+# Format and lint
+uv run ruff format src/
+uv run ruff check src/
 ```
 
 ## Step 8: Usage Example

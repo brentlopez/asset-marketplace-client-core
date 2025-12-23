@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "asset-marketplace-client-core"
@@ -36,7 +36,6 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "mypy>=1.0",
-    "black>=23.0",
     "ruff>=0.1.0",
 ]
 
@@ -45,18 +44,11 @@ Homepage = "https://github.com/brentlopez/asset-marketplace-client-core"
 Repository = "https://github.com/brentlopez/asset-marketplace-client-core"
 "Bug Tracker" = "https://github.com/brentlopez/asset-marketplace-client-core/issues"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-asset_marketplace_core = ["py.typed"]
-
-[tool.black]
-line-length = 88
-target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+[tool.hatch.build.targets.wheel]
+packages = ["src/asset_marketplace_core"]
 
 [tool.mypy]
-python_version = "3.7"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -71,6 +63,8 @@ strict_equality = true
 [tool.ruff]
 line-length = 88
 target-version = "py37"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -81,6 +75,10 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

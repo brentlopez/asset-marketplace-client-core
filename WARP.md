@@ -12,31 +12,31 @@ This is a **platform-agnostic Python library** providing base abstractions for a
 
 ### Setup
 ```bash
-pip install -e ".[dev]"
+uv sync
 ```
 
 ### Type Checking
 ```bash
-mypy src/
+uv run mypy src/
 ```
 This project uses **mypy strict mode**. All code must have complete type annotations.
 
 ### Linting & Formatting
 ```bash
 # Format code
-black src/
+uv run ruff format src/
 
 # Lint code
-ruff check src/
+uv run ruff check src/
 ```
 
 ### Testing
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage
-pytest --cov=asset_marketplace_core --cov-report=term-missing
+uv run pytest --cov=asset_marketplace_core --cov-report=term-missing
 
 # Note: Tests directory doesn't exist yet - create tests/ when adding tests
 ```
