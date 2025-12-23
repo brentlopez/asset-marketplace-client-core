@@ -140,5 +140,22 @@ This library uses the **Abstract Base Class (ABC) pattern**. Platform implementa
 ## Important Documentation
 
 - `docs/platform_client_guide.md` - Complete guide for building platform-specific clients
+- `SECURITY.md` - Security policy and best practices (**required reading**)
+- `SECURITY_AUDIT.md` - Comprehensive security audit report
 - `docs/async_api_plan.md` - Future async/await support roadmap
 - README.md - Public API documentation with examples
+
+## Security Considerations
+
+This library is security-focused:
+- Zero runtime dependencies (stdlib only) = minimal attack surface
+- Type-safe design (mypy strict mode)
+- No unsafe operations (eval, exec, subprocess, pickle)
+- Built-in input validation utilities
+
+When implementing features:
+- Always validate user inputs
+- Use `sanitize_filename()` and `validate_url()` utilities
+- Never hardcode credentials in examples or code
+- Follow path security guidelines in SECURITY.md
+- Run `uv run pip-audit` after dependency changes

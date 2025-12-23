@@ -616,6 +616,309 @@ def test_get_asset(mock_session):
     assert asset.title is not None
 ```
 
+## Security Best Practices
+
+### Credential Management
+
+**Never hardcode credentials in your code:**
+
+```python
+# ❌ BAD - Hardcoded credentials
+auth = MyMarketplaceAuth(api_key="sk_live_abc123...")
+
+# ✅ GOOD - Use environment variables
+import os
+auth = MyMarketplaceAuth(api_key=os.environ["MARKETPLACE_API_KEY"])
+```
+
+**Use secure credential storage:**
+
+```python
+# Example with python-dotenv
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Load from .env file (add to .gitignore!)
+api_key = os.environ.get("MARKETPLACE_API_KEY")
+
+if not api_key:
+    raise ValueError("MARKETPLACE_API_KEY environment variable not set")
+
+auth = MyMarketplaceAuth(api_key=api_key)
+```
+
+### Path Security
+
+**Prevent directory traversal attacks** when handling downloads:
+
+```python
+from pathlib import Path
+from asset_marketplace_core import sanitize_filename, MarketplaceValidationError
+
+def safe_download_path(base_dir: Path, filename: str) -> Path:
+    """Ensure download path doesn't escape base directory."""
+    # Sanitize the filename first
+    safe_name = sanitize_filename(filename)
+    
+    # Resolve the full path
+    full_path = (base_dir / safe_name).resolve()
+    
+    # Verify it's still within base_dir
+    try:
+        full_path.relative_to(base_dir.resolve())
+    except ValueError:
+        raise MarketplaceValidationError(
+            f"Path traversal detected: {filename}"
+        )
+    
+    return full_path
+
+# Use in your download implementation
+def download_asset(self, asset_uid: str, output_dir: Union[str, Path], **kwargs):
+    base_dir = Path(output_dir).resolve()
+    asset = self.get_asset(asset_uid)
+    
+    # Get filename from asset (e.g., from API response)
+    filename = asset.raw_data.get("filename", f"{asset_uid}.zip")
+    
+    # Validate the path is safe
+    safe_path = safe_download_path(base_dir, filename)
+    
+    # Download to safe path
+    # ...
+```
+
+### Input Validation
+
+**Always validate inputs** before making API calls:
+
+```python
+from asset_marketplace_core import validate_url, MarketplaceValidationError
+
+def download_from_url(self, url: str) -> bytes:
+    """Download file from URL with validation."""
+    # Validate URL format and scheme
+    if not validate_url(url):
+        raise MarketplaceValidationError(
+            f"Invalid or unsafe URL: {url}"
+        )
+    
+    # Additional checks
+    if not url.startswith(self.endpoints.base_url):
+        raise MarketplaceValidationError(
+            "URL must be from trusted API domain"
+        )
+    
+    response = self.session.get(url, timeout=30)
+    response.raise_for_status()
+    return response.content
+```
+
+### Network Security
+
+**Always use HTTPS and verify certificates:**
+
+```python
+import requests
+
+class MyMarketplaceAuth(AuthProvider):
+    def get_session(self) -> requests.Session:
+        session = requests.Session()
+        
+        # ✅ Verify SSL certificates (default, but explicit is better)
+        session.verify = True
+        
+        # ❌ NEVER do this in production!
+        # session.verify = False
+        
+        # Set reasonable timeouts
+        session.timeout = (5, 30)  # (connect, read)
+        
+        # Add authentication
+        session.headers.update({
+            'Authorization': f'Bearer {self.api_key}',
+            'User-Agent': 'my-marketplace-client/1.0.0',
+        })
+        
+        return session
+```
+
+**Implement rate limiting:**
+
+```python
+from time import time, sleep
+from collections import deque
+
+class RateLimitedClient(MarketplaceClient):
+    def __init__(self, auth: AuthProvider, max_requests: int = 100, 
+                 per_seconds: int = 60):
+        self.auth = auth
+        self.session = auth.get_session()
+        self.endpoints = auth.get_endpoints()
+        
+        # Rate limiting
+        self.max_requests = max_requests
+        self.per_seconds = per_seconds
+        self.request_times: deque = deque(maxlen=max_requests)
+    
+    def _check_rate_limit(self) -> None:
+        """Enforce rate limit."""
+        now = time()
+        
+        if len(self.request_times) >= self.max_requests:
+            oldest = self.request_times[0]
+            time_passed = now - oldest
+            
+            if time_passed < self.per_seconds:
+                sleep(self.per_seconds - time_passed)
+        
+        self.request_times.append(time())
+    
+    def get_asset(self, asset_uid: str) -> BaseAsset:
+        self._check_rate_limit()
+        # ... make API request
+```
+
+### Error Handling Security
+
+**Don't expose sensitive information in errors:**
+
+```python
+def get_asset(self, asset_uid: str) -> BaseAsset:
+    try:
+        url = self.endpoints.get_asset_url(asset_uid)
+        response = self.session.get(url)
+        response.raise_for_status()
+        return self._parse_asset(response.json())
+    
+    except requests.HTTPError as e:
+        # ✅ GOOD - Generic error without exposing internals
+        if e.response.status_code == 404:
+            raise MarketplaceNotFoundError(
+                f"Asset {asset_uid} not found"
+            )
+        elif e.response.status_code == 401:
+            raise MarketplaceAuthenticationError(
+                "Authentication failed - check your credentials"
+            )
+        else:
+            # ❌ BAD - Don't include full error details
+            # raise MarketplaceAPIError(f"API error: {e.response.text}")
+            
+            # ✅ GOOD - Log full error, but return generic message
+            logger.error(f"API error for asset {asset_uid}: {e}")
+            raise MarketplaceAPIError(
+                f"Failed to retrieve asset (status: {e.response.status_code})"
+            )
+```
+
+### Logging Security
+
+**Never log sensitive information:**
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+class MyMarketplaceClient(MarketplaceClient):
+    def __init__(self, auth: MyMarketplaceAuth):
+        self.auth = auth
+        self.session = auth.get_session()
+        
+        # ❌ BAD - Logs might contain credentials
+        # logger.info(f"Session headers: {self.session.headers}")
+        
+        # ✅ GOOD - Log only non-sensitive info
+        logger.info("MarketplaceClient initialized")
+    
+    def get_asset(self, asset_uid: str) -> BaseAsset:
+        # ✅ GOOD - Log request metadata
+        logger.debug(f"Fetching asset: {asset_uid}")
+        
+        response = self.session.get(self.endpoints.get_asset_url(asset_uid))
+        
+        # ❌ BAD - Response might contain tokens or sensitive data
+        # logger.debug(f"Response: {response.text}")
+        
+        # ✅ GOOD - Log only metadata
+        logger.debug(f"Response status: {response.status_code}")
+        
+        return self._parse_asset(response.json())
+```
+
+### Dependency Security
+
+**Keep dependencies updated and audited:**
+
+```bash
+# Add security scanning to your dev workflow
+uv add --dev pip-audit
+
+# Run security audit
+uv run pip-audit
+
+# Add to your CI/CD pipeline
+```
+
+**Add security checks to pyproject.toml:**
+
+```toml
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.0",
+    "ruff>=0.1.0",
+    "pip-audit>=2.0",  # Security scanning
+]
+```
+
+### Testing Security
+
+**Test security-related functionality:**
+
+```python
+# tests/test_security.py
+import pytest
+from pathlib import Path
+from my_marketplace_client import safe_download_path
+from asset_marketplace_core import MarketplaceValidationError
+
+def test_path_traversal_prevention():
+    """Ensure path traversal attacks are prevented."""
+    base_dir = Path("/safe/downloads")
+    
+    # These should raise errors
+    with pytest.raises(MarketplaceValidationError):
+        safe_download_path(base_dir, "../../../etc/passwd")
+    
+    with pytest.raises(MarketplaceValidationError):
+        safe_download_path(base_dir, "/absolute/path/file.zip")
+    
+    # This should work
+    safe_path = safe_download_path(base_dir, "asset.zip")
+    assert safe_path == base_dir / "asset.zip"
+
+def test_url_validation():
+    """Ensure only HTTPS URLs are accepted."""
+    from asset_marketplace_core import validate_url
+    
+    assert validate_url("https://api.example.com/asset")
+    assert not validate_url("ftp://evil.com/malware")
+    assert not validate_url("file:///etc/passwd")
+    assert not validate_url("javascript:alert('xss')")
+
+def test_filename_sanitization():
+    """Ensure filenames are properly sanitized."""
+    from asset_marketplace_core import sanitize_filename
+    
+    # Remove dangerous characters
+    assert sanitize_filename("file<>name") == "filename"
+    assert sanitize_filename("../etc/passwd") == "etcpasswd"
+    assert sanitize_filename("file:name") == "filename"
+```
+
 ## Best Practices
 
 1. **Separate Concerns:** Keep API types separate from domain models
@@ -625,12 +928,38 @@ def test_get_asset(mock_session):
 5. **Testing:** Write unit tests with mocked API responses
 6. **Versioning:** Follow semantic versioning
 7. **Changelog:** Maintain CHANGELOG.md
+8. **Security:** Follow all security best practices (see SECURITY.md)
+9. **Dependency Audits:** Run `pip-audit` regularly
+10. **Code Quality:** Use mypy strict mode and ruff linting
 
 ## Additional Resources
 
 - [Core Library API Reference](../README.md)
+- [Security Policy](../SECURITY.md) - **Required reading for all implementers**
+- [Security Audit Report](../SECURITY_AUDIT.md) - Comprehensive security analysis
 - [Integration Examples](./integration_examples.md)
 - [Async API Plan](./async_api_plan.md)
+
+## Security Checklist for Platform Clients
+
+Before releasing your platform client, verify:
+
+- [ ] No hardcoded credentials, API keys, or tokens
+- [ ] All credentials loaded from environment variables or secure storage
+- [ ] `.env` files added to `.gitignore`
+- [ ] Path traversal prevention implemented for downloads
+- [ ] Input validation for all user-provided data
+- [ ] URL validation restricts to HTTPS only
+- [ ] SSL certificate verification enabled (never `verify=False`)
+- [ ] Timeouts configured for all network requests
+- [ ] Rate limiting implemented
+- [ ] Error messages don't expose sensitive data
+- [ ] Logging doesn't include credentials or tokens
+- [ ] Dependencies kept up to date
+- [ ] `pip-audit` runs clean
+- [ ] Security tests written and passing
+- [ ] Type hints complete (mypy strict mode)
+- [ ] `SECURITY.md` file created with vulnerability reporting process
 
 ## Authentication Adapters
 

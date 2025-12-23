@@ -344,10 +344,32 @@ my-marketplace-client/
 
 ### Core Documentation
 - [Platform Client Development Guide](./docs/platform_client_guide.md) - Complete guide to building platform clients
+- [Security Policy](./SECURITY.md) - Security best practices and vulnerability reporting
+- [Security Audit Report](./SECURITY_AUDIT.md) - Comprehensive security analysis
 - [Async API Plan](./docs/async_api_plan.md) - Future async/await support roadmap
 
 ### Architecture
 For a deeper understanding of the system architecture and design patterns, see the related [asset-marketplace-client-system](https://github.com/brentlopez/asset-marketplace-client-system) repository.
+
+## Security
+
+This library is designed with security as a priority:
+
+- ✅ **Zero runtime dependencies** - Minimal attack surface
+- ✅ **Type-safe** - Full mypy strict mode compliance
+- ✅ **Secure defaults** - No unsafe operations (eval, exec, subprocess)
+- ✅ **Input validation** - Built-in utilities for sanitizing filenames and validating URLs
+- ✅ **Audited** - Regular security audits with pip-audit
+
+For platform implementers:
+- **Read [SECURITY.md](./SECURITY.md)** before building your client
+- Follow the security best practices in the [Platform Client Guide](./docs/platform_client_guide.md#security-best-practices)
+- Never hardcode credentials - use environment variables
+- Implement path traversal prevention for downloads
+- Always validate URLs and use HTTPS
+- Run `pip-audit` regularly on your dependencies
+
+**Reporting Vulnerabilities:** See [SECURITY.md](./SECURITY.md) for our responsible disclosure policy.
 
 ## Development
 
@@ -388,7 +410,9 @@ Contributions are welcome! Please:
 1. Ensure all type hints are correct (mypy strict mode)
 2. Add tests for new functionality
 3. Update documentation
-4. Follow existing code style (black, ruff)
+4. Follow existing code style (ruff format + ruff check)
+5. Run security audit (`uv run pip-audit`)
+6. Follow security best practices (see SECURITY.md)
 
 ## License
 
