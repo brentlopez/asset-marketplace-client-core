@@ -4,9 +4,9 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Optional, Union
 
-from .models.base import BaseAsset, BaseCollection
-from .models.progress import ProgressCallback
-from .models.result import DownloadResult
+from ..models.base import BaseAsset, BaseCollection
+from ..models.result import DownloadResult
+from ..models.sync_progress import ProgressCallback
 
 
 class MarketplaceClient(ABC):

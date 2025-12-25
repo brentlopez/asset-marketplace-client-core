@@ -5,8 +5,8 @@ clients. Platforms (Fab, Unity Asset Store, etc.) extend these base classes
 with their specific implementations.
 """
 
-from .auth import AuthProvider, EndpointConfig
-from .client import MarketplaceClient
+from .auth import AsyncAuthProvider, AuthProvider, EndpointConfig
+from .client import AsyncMarketplaceClient, MarketplaceClient
 from .exceptions import (
     MarketplaceAPIError,
     MarketplaceAuthenticationError,
@@ -15,8 +15,8 @@ from .exceptions import (
     MarketplaceNotFoundError,
     MarketplaceValidationError,
 )
+from .models import AsyncProgressCallback, ProgressCallback
 from .models.base import BaseAsset, BaseCollection
-from .models.progress import ProgressCallback
 from .models.result import DownloadResult
 from .utils import (
     format_bytes,
@@ -25,14 +25,18 @@ from .utils import (
     validate_url,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
-    # Auth
+    # Sync Auth
     "AuthProvider",
     "EndpointConfig",
-    # Client
+    # Async Auth
+    "AsyncAuthProvider",
+    # Sync Client
     "MarketplaceClient",
+    # Async Client
+    "AsyncMarketplaceClient",
     # Exceptions
     "MarketplaceError",
     "MarketplaceAuthenticationError",
@@ -44,6 +48,7 @@ __all__ = [
     "BaseAsset",
     "BaseCollection",
     "ProgressCallback",
+    "AsyncProgressCallback",
     "DownloadResult",
     # Utils
     "sanitize_filename",

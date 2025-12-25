@@ -133,6 +133,75 @@ with MyPlatformClient(MyPlatformAuth("your-api-key")) as client:
         print(f"{asset.title} ({asset.uid})")
 ```
 
+### Async/Await Support (v0.2.0+)
+
+Build high-performance async clients using `AsyncMarketplaceClient` and `AsyncAuthProvider`:
+
+```python
+import asyncio
+from asset_marketplace_core import (
+    AsyncMarketplaceClient,
+    AsyncAuthProvider,
+    EndpointConfig,
+    BaseAsset,
+    BaseCollection,
+    DownloadResult,
+)
+
+class MyAsyncAuth(AsyncAuthProvider):
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self._session = None
+    
+    async def get_session(self):
+        if self._session is None:
+            import aiohttp
+            self._session = aiohttp.ClientSession(
+                headers={'Authorization': f'Bearer {self.api_key}'}
+            )
+        return self._session
+    
+    def get_endpoints(self) -> MyPlatformEndpoints:
+        return MyPlatformEndpoints(base_url="https://api.example.com")
+    
+    async def close(self):
+        if self._session:
+            await self._session.close()
+
+class MyAsyncClient(AsyncMarketplaceClient):
+    def __init__(self, auth: MyAsyncAuth):
+        self.auth = auth
+        self.endpoints = auth.get_endpoints()
+    
+    async def get_collection(self, **kwargs) -> BaseCollection:
+        session = await self.auth.get_session()
+        async with session.get(self.endpoints.library_url) as response:
+            data = await response.json()
+            assets = [BaseAsset(uid=item['id'], title=item['name']) 
+                     for item in data['assets']]
+            return BaseCollection(assets=assets)
+    
+    async def get_asset(self, asset_uid: str) -> BaseAsset:
+        # Implementation...
+        pass
+    
+    async def download_asset(self, asset_uid, output_dir, progress_callback=None, **kwargs):
+        # Implementation...
+        pass
+    
+    async def close(self):
+        await self.auth.close()
+
+# Use async client
+async def main():
+    async with MyAsyncClient(MyAsyncAuth("your-api-key")) as client:
+        collection = await client.get_collection(limit=10)
+        for asset in collection.assets:
+            print(f"{asset.title} ({asset.uid})")
+
+asyncio.run(main())
+```
+
 ## Core Components
 
 ### MarketplaceClient

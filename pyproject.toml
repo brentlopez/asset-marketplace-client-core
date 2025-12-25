@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "asset-marketplace-client-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Platform-agnostic abstractions for asset marketplace API clients"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -77,7 +77,11 @@ select = [
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
 ]
-ignore = []
+ignore = [
+    "UP007",  # Use X | Y for type annotations (Python 3.10+, we target 3.7+)
+    "UP045",  # Use X | None for type annotations (Python 3.10+, we target 3.7+)
+    "B027",   # Allow empty methods in ABCs without @abstractmethod (optional overrides)
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -88,4 +92,12 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "--cov=asset_marketplace_core --cov-report=term-missing --cov-report=html"
+addopts = ""
+
+[dependency-groups]
+dev = [
+    "mypy>=1.4.1",
+    "pip-audit>=2.6.1",
+    "pytest-asyncio>=0.21.2",
+    "ruff>=0.14.10",
+]
